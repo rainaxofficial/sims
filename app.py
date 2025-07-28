@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -22,10 +22,8 @@ def create_driver():
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.binary_location = "/opt/render/project/.render/chrome/opt/google/chrome/google-chrome"
 
-    # ✅ Use manually downloaded ChromeDriver v138
     service = Service("/opt/render/project/.render/chromedriver")
     driver = webdriver.Chrome(service=service, options=options)
-
     driver.get("https://minahalsimdata.com.pk/sim-info/")
     WebDriverWait(driver, 15).until(
         EC.visibility_of_element_located((By.ID, "wp-block-search__input-1"))
@@ -34,7 +32,6 @@ def create_driver():
 
 try:
     chrome_driver = create_driver()
-    print("[✅] Chrome driver initialized")
 except Exception as e:
     print(f"[FATAL] Failed to launch Chrome: {e}")
     chrome_driver = None
@@ -73,10 +70,8 @@ def perform_search(number):
                     'CNIC': data.get('CNIC', ''),
                     'Address': data.get('Address', ''),
                 })
-
     except Exception as e:
         print(f"[❌] Chrome error: {e}")
-        print("[🔁] Relaunching Chrome...")
         try:
             chrome_driver.quit()
         except:
@@ -84,7 +79,6 @@ def perform_search(number):
         try:
             chrome_driver = create_driver()
         except Exception as e:
-            print(f"[FATAL] Re-launch failed: {e}")
             chrome_driver = None
             raise
         time.sleep(1)
@@ -95,21 +89,15 @@ def perform_search(number):
 @app.route("/", methods=["GET", "POST"])
 def index():
     global chrome_driver
-    results = []
-    number = ""
-    error = None
 
     if request.method == "POST":
-        number = request.form.get("number", "").strip()
-        if not number:
-            error = "Please enter a number or CNIC."
-        else:
-            try:
-                results = perform_search(number)
-            except Exception as e:
-                error = f"[FATAL ERROR] {e}"
+        try:
+            data = request.get_json()
+            number = data.get("number", "").strip()
+            results = perform_search(number)
+            return jsonify({"results": results})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
-    return render_template("index.html", number=number, results=results, error=error)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    return render_template("index.html")
+    
