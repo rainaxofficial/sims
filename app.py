@@ -6,7 +6,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-from webdriver_manager.chrome import ChromeDriverManager
 import threading
 import time
 
@@ -23,7 +22,8 @@ def create_driver():
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.binary_location = "/opt/render/project/.render/chrome/opt/google/chrome/google-chrome"
 
-    service = Service(ChromeDriverManager().install())
+    # ✅ Use manually downloaded ChromeDriver v138
+    service = Service("/opt/render/project/.render/chromedriver")
     driver = webdriver.Chrome(service=service, options=options)
 
     driver.get("https://minahalsimdata.com.pk/sim-info/")
