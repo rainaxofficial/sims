@@ -26,4 +26,4 @@ chmod +x chromedriver
 rm -rf chromedriver.zip chromedriver-linux64
 
 # Install Python dependencies
-pip install Flask selenium beautifulsoup4 gunicorn
+pip install Flask selenium beautifulsoup4 gunicorn flask-cors
