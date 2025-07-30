@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS  # ✅ Allow frontend like Blogger
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -10,6 +11,8 @@ import threading
 import time
 
 app = Flask(__name__)
+CORS(app)  # ✅ Enable CORS for all routes
+
 driver_lock = threading.Lock()
 
 def create_driver():
@@ -36,7 +39,7 @@ except Exception as e:
     print(f"[FATAL] Failed to launch Chrome: {e}")
     chrome_driver = None
 
-def perform_search(number):
+def perform_search(number, retry=True):
     global chrome_driver
     results = []
 
@@ -70,19 +73,22 @@ def perform_search(number):
                     'CNIC': data.get('CNIC', ''),
                     'Address': data.get('Address', ''),
                 })
+
     except Exception as e:
         print(f"[❌] Chrome error: {e}")
-        try:
-            chrome_driver.quit()
-        except:
-            pass
-        try:
-            chrome_driver = create_driver()
-        except Exception as e:
-            chrome_driver = None
-            raise
-        time.sleep(1)
-        return perform_search(number)
+        if retry:
+            try:
+                chrome_driver.quit()
+            except:
+                pass
+            try:
+                chrome_driver = create_driver()
+            except Exception as e:
+                chrome_driver = None
+                raise Exception("Driver restart failed: " + str(e))
+            return perform_search(number, retry=False)
+        else:
+            raise e
 
     return results
 
@@ -94,10 +100,15 @@ def index():
         try:
             data = request.get_json()
             number = data.get("number", "").strip()
+            print("[📲] Number received:", number)  # ✅ Logging
             results = perform_search(number)
             return jsonify({"results": results})
         except Exception as e:
+            print(f"[❌] Error: {e}")
             return jsonify({"error": str(e)}), 500
 
     return render_template("index.html")
-    
+
+@app.route("/health")
+def health():
+    return "OK", 200
